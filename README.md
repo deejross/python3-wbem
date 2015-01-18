@@ -70,6 +70,7 @@ This is a quick example for listing the instances of a class:
 >>> client = WBEMClient('the-host')
 >>> client.EnumerateInstanceNames(client.Class('OperatingSystem'))
 <wbem.cim.Response: EnumerateInstanceNames, instances: 5, properties: 3>
+```
 
 Contributions
 -------------
