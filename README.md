@@ -8,17 +8,68 @@ During my conversion of PyWBEM to Python 3, I noticed (in my opinion) a bloat of
 
 Current Status
 --------------
-Under development. The CIM-XML generation required for making read only requests has been completed. Recently, the WBEMClient class was created to handle the communication functions as well as a basic CIM-XML parser, however, it has not been tested yet. Work is underway to get this library in a more stable state.
+Fully working read-only functions GetClass, EnumerateClasses, EnumerateClassNames, GetInstance, EnumerateInstances, and EnumerateInstanceNames. These cover most of the needs for pulling information from WBEM devices.
 
 Limitations
 -----------
-* No HTTP/SSL support yet
+* No HTTPS/SSL/TLS support yet
 * Only HTTP support, no local socket support yet
 * Only read-only methods are being developed currently
 
+Dependencies
+------------
+There are no required dependencies other than Python 2.6+ or Python 3.3+. However, if lxml is installed, XML will be handled with it. Otherwise, it attempts to import cElementTree (for Python 2.x and non-CPython platforms), and finally choosing regular ElementTree if nothing else is available.
+
 Documentation
 -------------
-Since this library is still under construction, there is no documentation yet. Hopefully, within the next few days it will become more stablized and this section can be filled in with better information.
+There is no official documentation yet. However, the code base should be small enough to figure out API. Instance and Class objects are returned and given as arguments using WBEMClient. This simplifies the handling of that information, and Instance and Class instances can be serialized to a string, and later deserialized back into objects. This makes CLI tools easier to write that require the user to specify Instances or Classes.
+
+WBEMClient is the primary way to interact with the library. This is its initializer:
+* hostname
+* port: optional (default: 80)
+* username: optional (default: None)
+* password: optional (default: None)
+* default_namespace: optional (default: root/cimv2)
+* debug: optional (default: False)
+
+To create Class or Instance objects you can use the client's Class and Instance methods.
+
+For Classes:
+```python
+client.Class('OperatingSystem')
+```
+
+For creating Instance objects using Python code:
+```python
+client.Instance('OperatingSystem', keybindings=dict(Name='Foo'))
+```
+
+For creating Instance objects from serialized strings:
+```python
+client.Instance('$cn=OperatingSystem;$ns=root/cimv2;Name=Foo')
+```
+
+Once you have a Class or Instance object, you can call methods:
+* GetClass(class_obj)
+* EnumerateClasses(class_obj)
+* EnumerateClassNames(class_obj)
+* GetInstance(instance_obj)
+* EnumerateInstances(class_obj)
+* EnumerateInstanceNames(class_obj)
+
+This will return a Response object with the following members:
+* method: The method name
+* instances: List of Instance objects
+* properties: Dictionary of properties found
+
+Example
+-------
+This is a quick example for listing the instances of a class:
+```python
+>>> from wbem import WBEMClient
+>>> client = WBEMClient('the-host')
+>>> client.EnumerateInstanceNames(client.Class('OperatingSystem'))
+<wbem.cim.Response: EnumerateInstanceNames, instances: 5, properties: 3>
 
 Contributions
 -------------
