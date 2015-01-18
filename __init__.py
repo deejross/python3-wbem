@@ -32,3 +32,4 @@ SOFTWARE.
 __version__ = '0.1'
 
 from .cim import Class, Instance
+from .client import WBEMClient

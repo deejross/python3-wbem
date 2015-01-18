@@ -33,7 +33,7 @@ import codecs
 import socket
 import six
 
-from .cim import Class, Instance, Parser
+from .cim import CimError, Class, Instance, Methods, Response
 
 if six.PY2:
     import httplib as http_client
@@ -47,24 +47,46 @@ class AuthenticationError(Exception):
     pass
 
 
-class CimError(Exception):
-    pass
-
-
 class HttpError(Exception):
     pass
 
 
 class WBEMClient(object):
-    def __init__(self, hostname, port=80, username=None, password=None, default_namespace='root/cimv2'):
+    def __init__(self, hostname, port=80, username=None, password=None, default_namespace='root/cimv2', debug=False):
         self.hostname = hostname
         self.port = port
         self.username = username
         self.password = password
         self.default_namespace = default_namespace
+        self.debug = debug
         self.max_attempts = 5
 
+    def Class(self, name, namespace=None):
+        """
+        Returns a Class object using the default namespace
+        :param name: Class name
+        :param namespace: The namespace, if overriding the default
+        :return: Class
+        """
+        return Class(name, namespace or self.default_namespace)
+
+    def Instance(self, classname_or_instance_string, keybindings=None, namespace=None):
+        """
+        Returns an Instance object using the default namespace
+        :param classname_or_instance_string: The class name or Instance.tostring() result
+        :param keybindings: Dictionary of keybindings
+        :param namespace: The namespace, if overriding the default
+        :return: Instance
+        """
+        if classname_or_instance_string.startswith('$cn=') or classname_or_instance_string.startswith('classname='):
+            return Instance.fromstring(classname_or_instance_string)
+        else:
+            return Instance(classname_or_instance_string, keybindings, namespace or self.default_namespace)
+
     def request(self, xml, headers=None):
+        if self.debug:
+            print(xml)
+
         c = http_client.HTTPConnection(self.hostname, port=self.port)
 
         attempts = 0
@@ -94,8 +116,7 @@ class WBEMClient(object):
                 try:
                     c.send(xml)
                 except socket.error as ex:
-                    if ex[0] != 104 and ex[0] != 32:
-                        raise
+                    raise HttpError(str(ex))
 
                 response = c.getresponse()
                 body = response.read()
@@ -119,6 +140,9 @@ class WBEMClient(object):
 
             break
 
+        if self.debug:
+            print(body)
+
         return body
 
     def imethodcall(self, method, class_or_instance_obj, xml):
@@ -141,4 +165,23 @@ class WBEMClient(object):
             headers['CIMObject'] = s + ','.join(kbs)
 
         response = self.request(xml, headers)
-        return Parser(response)
+        namespace = class_or_instance_obj.namespace or self.default_namespace
+        return Response(response, namespace)
+
+    def GetClass(self, class_obj):
+        return self.imethodcall('GetClass', class_obj, Methods.GetClass(class_obj))
+
+    def EnumerateClasses(self, class_obj):
+        return self.imethodcall('EnumerateClasses', class_obj, Methods.EnumerateClasses(class_obj))
+
+    def EnumerateClassNames(self, class_obj):
+        return self.imethodcall('EnumerateClassNames', class_obj, Methods.EnumerateClassNames(class_obj))
+
+    def GetInstance(self, instance_obj):
+        return self.imethodcall('GetInstance', instance_obj, Methods.GetInstance(instance_obj))
+
+    def EnumerateInstances(self, class_obj):
+        return self.imethodcall('EnumerateInstances', class_obj, Methods.EnumerateInstances(class_obj))
+
+    def EnumerateInstanceNames(self, class_obj):
+        return self.imethodcall('EnumerateInstanceNames', class_obj, Methods.EnumerateInstanceNames(class_obj))

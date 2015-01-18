@@ -47,11 +47,58 @@ except ImportError:
 import datetime
 
 
+class CimError(Exception):
+    """
+    Generic CIM error (code 1 and any other that does not subclass CimError)
+    """
+    code = 1
+
+
+class InvalidNamespace(CimError):
+    code = 3
+
+
+class InvalidParameter(CimError):
+    code = 4
+
+
+class InvalidClass(CimError):
+    code = 5
+
+
+class NotFound(CimError):
+    code = 6
+
+
+class NotSupported(CimError):
+    code = 7
+
+
+class InvalidProperty(CimError):
+    code = 12
+
+
+class TypeMismatch(CimError):
+    code = 13
+
+
+class InvalidQuery(CimError):
+    code = 15
+
+
+class InvalidMethod(CimError):
+    code = 17
+
+
 class Class(object):
     """
     Represents a CIM class.
     """
-    def __init__(self, name, namespace='root/cimv2'):
+    def __init__(self, name, namespace=None):
+        shortcuts_reversed = Instance.shortcuts_reversed()
+        if name in shortcuts_reversed:
+            name = shortcuts_reversed[name]
+
         self.name = name
         self.namespace = namespace
 
@@ -93,7 +140,7 @@ class Instance(object):
         Initializer
         :param classname: The class name of the instance
         :param keybindings: Dictionary of keybindings
-        :param namespace: The namespace (default: root/cimv2)
+        :param namespace: The namespace
 
         :return:
         """
@@ -103,7 +150,7 @@ class Instance(object):
 
         self.classname = classname
         self.keybindings = keybindings or dict()
-        self.namespace = namespace or self.default_namespace
+        self.namespace = namespace
 
     @classmethod
     def shortcuts_reversed(cls):
@@ -155,8 +202,11 @@ class Instance(object):
             output.append('$ns=%s' % self.namespace)
 
         for key, val in self.keybindings.items():
-            if isinstance(val, (list, tuple)) and val[1] != 'string':
-                output.append('%s=%s?%s' % (key, val[0], val[1]))
+            if isinstance(val, (list, tuple)):
+                if val[1] != 'string':
+                    output.append('%s=%s?%s' % (key, val[0], val[1]))
+                else:
+                    output.append('%s=%s' % (key, val[0]))
             else:
                 output.append('%s=%s' % (key, val))
 
@@ -238,7 +288,7 @@ class Tags(object):
         :param dtd_version: DTD Version
         :return: Element
 
-        >>> ET.dump(Tags.cim())
+        >>> ET.tostring(Tags.cim())
         <CIM CIMVERSION="x.x" DTDVERSION="x.x"/>
         """
         return Tags.append_children(
@@ -255,7 +305,7 @@ class Tags(object):
         :param protocol_version: Protocol version
         :return: Element
 
-        >>> ET.dump(Tags.message())
+        >>> ET.tostring(Tags.message())
         <MESSAGE ID="1001" PROTOCOLVERSION="1.0"/>
         """
         return Tags.append_children(
@@ -270,7 +320,7 @@ class Tags(object):
         :param children: Child nodes to append
         :return: Element
 
-        >>> ET.dump(Tags.simplereq())
+        >>> ET.tostring(Tags.simplereq())
         <SIMPLEREQ/>
         """
         return Tags.append_children(
@@ -286,7 +336,7 @@ class Tags(object):
         :param name: Name of the method to call
         :return: Element
 
-        >>> ET.dump(Tags.imethodcall())
+        >>> ET.tostring(Tags.imethodcall())
         <IMETHODCALL NAME="EnumerateInstanceNames"/>
         """
         return Tags.append_children(
@@ -301,7 +351,7 @@ class Tags(object):
         :param namespace: The namespace path (ex: root/cimv2)
         :return: Element
 
-        >>> ET.dump(Tags.localnamespacepath())
+        >>> ET.tostring(Tags.localnamespacepath())
         <LOCALNAMESPACEPATH><NAMESPACE NAME="root"/><NAMESPACE NAME="cimv2"/></LOCALNAMESPACEPATH>
         """
         children = []
@@ -322,7 +372,7 @@ class Tags(object):
         :param name: Name of the parameter
         :return: Element
 
-        >>> ET.dump(Tags.iparamvalue())
+        >>> ET.tostring(Tags.iparamvalue())
         <IPARAMVALUE NAME="ClassName"/>
         """
         return Tags.append_children(
@@ -337,7 +387,7 @@ class Tags(object):
         :param name: Name of the class
         :return: Element
 
-        >>> ET.dump(Tags.classname('OperatingSystem'))
+        >>> ET.tostring(Tags.classname('OperatingSystem'))
         <CLASSNAME NAME="OperatingSystem"/>
         """
         return ET.Element('CLASSNAME', dict(NAME=name))
@@ -350,7 +400,7 @@ class Tags(object):
         :param classname: Name of the class
         :return: Element
 
-        >>> ET.dump(Tags.instancename('StorageDevice'))
+        >>> ET.tostring(Tags.instancename('StorageDevice'))
         <INSTANCENAME CLASSNAME="StorageDevice"/>
         """
         return Tags.append_children(
@@ -367,7 +417,7 @@ class Tags(object):
         :param value_type: VALUETYPE for KEYVALUE. Defaults to auto-detect
         :return: Element
 
-        >>> ET.dump(Tags.keybinding(name='Name', value='The Value'))
+        >>> ET.tostring(Tags.keybinding(name='Name', value='The Value'))
         <KEYBINDING NAME="Name"><KEYVALUE VALUETYPE="string">The Value</KEYVALUE></KEYBINDING>
         """
         if value:
@@ -405,8 +455,19 @@ class Tags(object):
                 offset = '+%s' % int(float((local - utc).seconds) / 60 + 0.5)
 
             return value.strftime('%Y%m%d%H%M%S.%f')+offset, 'datetime'
+        elif isinstance(value, datetime.timedelta):
+            hours = value.seconds / 3600
+            minutes = (value.seconds - hours * 3600) / 60
+            return '%08d%02d%02d%02d.%06d:000' % (
+                value.days, hours, minutes,
+                value.seconds - hours * 3600 - minutes * 60,
+                value.microseconds
+            )
         elif isinstance(value, bool):
             return 'TRUE', 'boolean' if value else 'FALSE', 'boolean'
+        elif isinstance(value, float):
+            # take best guess of value_type
+            return str(value), 'real32'
         elif isinstance(value, int):
             # take best guess of value_type
             if value < 0:
@@ -472,7 +533,7 @@ class Methods(object):
         :param class_obj: Class object
         :return: XML string
         """
-        return ET.dump(
+        return ET.tostring(
             Helpers.imethodcall('GetClass', class_obj)
         )
 
@@ -483,7 +544,7 @@ class Methods(object):
         :param class_obj: Class object
         :return: XML string
         """
-        return ET.dump(
+        return ET.tostring(
             Helpers.imethodcall('EnumerateClasses', class_obj)
         )
 
@@ -494,7 +555,7 @@ class Methods(object):
         :param class_obj: Class object
         :return: XML string
         """
-        return ET.dump(
+        return ET.tostring(
             Helpers.imethodcall('EnumerateClassNames', class_obj)
         )
 
@@ -505,7 +566,7 @@ class Methods(object):
         :param instance_obj: Instance object
         :return: XML string
         """
-        return ET.dump(
+        return ET.tostring(
             Helpers.imethodcall('GetInstance', instance_obj)
         )
 
@@ -516,7 +577,7 @@ class Methods(object):
         :param class_obj: Class object
         :return: XML string
         """
-        return ET.dump(
+        return ET.tostring(
             Helpers.imethodcall('EnumerateInstances', class_obj)
         )
 
@@ -527,7 +588,7 @@ class Methods(object):
         :param class_obj: Class object
         :return: XML string
         """
-        return ET.dump(
+        return ET.tostring(
             Helpers.imethodcall('EnumerateInstanceNames', class_obj)
         )
 
@@ -566,7 +627,7 @@ class Methods(object):
         :param class_obj: Class object
         :return: XML string
         """
-        return ET.dump(
+        return ET.tostring(
             Helpers.imethodcall('DeleteClass', class_obj)
         )
 
@@ -607,11 +668,12 @@ class Methods(object):
         raise NotImplementedError()
 
 
-class Parser(object):
-    def __init__(self, xml_string):
+class Response(object):
+    def __init__(self, xml_string, namespace):
         """
         Parses the given XML string and determines the response
         :param xml_string: The XML string
+        :param namespace: The namespace
         :return:
         """
         root = ET.fromstring(xml_string)
@@ -622,10 +684,34 @@ class Parser(object):
         # save the method name
         self.method = imethodresponse.attrib['NAME']
 
+        # check for errors
+        if imethodresponse.find('ERROR') is not None:
+            error_e = imethodresponse.find('ERROR')
+            error_code = error_e.attrib['CODE']
+            description = error_e.attrib['DESCRIPTION']
+            if error_code == '3':
+                raise InvalidNamespace(description)
+            if error_code == '5':
+                raise InvalidClass(description)
+            if error_code == '6':
+                raise NotFound(description)
+            if error_code == '7':
+                raise NotSupported(description)
+            if error_code == '12':
+                raise InvalidProperty(description)
+            if error_code == '13':
+                raise TypeMismatch(description)
+            if error_code == '15':
+                raise InvalidQuery(description)
+            if error_code == '17':
+                raise InvalidMethod(description)
+
+            raise CimError(description)
+
         # find and store instances, if they exist
         self.instances = []
         for i in imethodresponse.find('IRETURNVALUE').findall('INSTANCENAME'):
-            instance = Instance(i.attrib['CLASSNAME'])
+            instance = Instance(i.attrib['CLASSNAME'], namespace=namespace)
             for kb in i.findall('KEYBINDING'):
                 name = kb.attrib['NAME']
                 keyvalue_e = kb.find('KEYVALUE')
@@ -638,12 +724,12 @@ class Parser(object):
         # find and store properties, if they exist
         self.properties = dict()
         props_parent = imethodresponse.find('IRETURNVALUE').find('INSTANCE')
-        if props_parent:
+        if props_parent is not None:
             for p in props_parent.findall('PROPERTY'):
                 key = p.attrib['NAME']
                 valuetype = p.attrib['TYPE']
                 value_e = p.find('VALUE')
-                if value_e:
+                if value_e is not None:
                     value = self.parse_valuetype(value_e.text.strip(), valuetype)
                     self.properties[key] = value
                 else:
@@ -654,7 +740,6 @@ class Parser(object):
                             values.append(self.parse_valuetype(v.text.strip(), valuetype))
 
                         self.properties[key] = values
-
 
     @staticmethod
     def parse_valuetype(value, valuetype):
@@ -670,6 +755,9 @@ class Parser(object):
         if 'sint' in valuetype or 'uint' in valuetype:
             return int(value)
 
+        if 'real' in valuetype:
+            return float(value)
+
         if valuetype == 'boolean':
             return True if value.upper() == 'TRUE' else False
 
@@ -680,7 +768,31 @@ class Parser(object):
             elif '+' in value:
                 dt, offset = value.split('+', 1)
                 offset = int(offset)
+            elif value.endswith(':000') and len(value) == 25:
+                return datetime.timedelta(
+                    days=int(value[0:8]),
+                    hours=int(value[8:10]),
+                    minutes=int(value[10:12]),
+                    seconds=int(value[12:14]),
+                    microseconds=int(value[15:21])
+                )
             else:
                 dt = value, offset = 0
 
             return datetime.datetime.strptime(dt, '%Y%m%d%H%M%S.%f') + datetime.timedelta(minutes=offset)
+
+    def __str__(self):
+        """
+        String representation of the Response
+        :return: string
+        """
+        return '%s Response' % self.method
+
+    def __repr__(self):
+        """
+        String representation of the Response
+        :return:
+        """
+        return '<wbem.cim.Response: %s, instances: %s, properties: %s>' % (
+            self.method, len(self.instances), len(self.properties)
+        )
