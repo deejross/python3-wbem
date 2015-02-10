@@ -201,7 +201,7 @@ class Instance(object):
         if self.namespace and self.namespace != self.default_namespace:
             output.append('$ns=%s' % self.namespace)
 
-        for key, val in self.keybindings.items():
+        for key, val in sorted(self.keybindings.items()):
             if isinstance(val, (list, tuple)):
                 if val[1] != 'string':
                     output.append('%s=%s?%s' % (key, val[0], val[1]))
@@ -280,7 +280,7 @@ class Tags(object):
         return parent
 
     @staticmethod
-    def cim(children=None, cim_version='2.0', dtd_version='2.0'):
+    def cim(children=None, cim_version='2.29', dtd_version='2.0'):
         """
         Root CIM element
         :param children: Child nodes to append

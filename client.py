@@ -52,13 +52,15 @@ class HttpError(Exception):
 
 
 class WBEMClient(object):
-    def __init__(self, hostname, port=80, username=None, password=None, default_namespace='root/cimv2', debug=False):
+    def __init__(self, hostname, port=80, username=None, password=None,
+                 default_namespace='root/cimv2', debug=False, https=False):
         self.hostname = hostname
         self.port = port
         self.username = username
         self.password = password
         self.default_namespace = default_namespace
         self.debug = debug
+        self.https = https
         self.max_attempts = 5
 
     def Class(self, name, namespace=None):
@@ -87,7 +89,11 @@ class WBEMClient(object):
         if self.debug:
             print(xml)
 
-        c = http_client.HTTPConnection(self.hostname, port=self.port)
+        http_class = http_client.HTTPConnection
+        if self.https:
+            http_class = http_client.HTTPSConnection
+
+        c = http_class(self.hostname, port=self.port)
 
         attempts = 0
         while attempts < self.max_attempts:
