@@ -28,6 +28,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
+import os
 import sys
 if sys.version[0] == '2':
     from Tkinter import *
@@ -39,13 +40,19 @@ else:
     from tkinter import ttk
 
 
+# make sure to get the file's current path, even when compiled
+try:
+    file_path = os.path.abspath(__file__)
+except NameError:
+    file_path = os.path.abspath(sys.argv[0])
+
 # hack to make script work in same directory as package
 try:
     from .cim import InvalidClass
     from .client import WBEMClient
 except (ImportError, SystemError, ValueError):
     import os
-    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    sys.path.append(os.path.dirname(os.path.dirname(file_path)))
     from wbem import WBEMClient
     from wbem.cim import InvalidClass
 
@@ -206,7 +213,43 @@ class MainApplication(ttk.Frame, object):
             self.txt_results.insert(END, 'No results')
 
 
+def compile_exe():
+    """
+    Creates a standalone EXE file.
+    """
+    print('\nRunning compile using distutils and py2exe:\n')
+    from distutils.core import setup
+    import py2exe  # required for proper inclusion
+
+    typelibs = []
+    com_server = []
+    dll_excludes = ['w9xpopen.exe']
+
+    sys.argv[1] = 'py2exe'
+    setup(
+        console=[file_path],
+        com_server=com_server,
+        options=dict(
+            py2exe=dict(
+                typelibs=typelibs,
+                includes=[],
+                excludes=[],
+                dll_excludes=dll_excludes,
+                bundle_files=2,
+                compressed=True
+            ),
+        ),
+        zipfile=None
+    )
+
+    sys.exit(0)
+
+
 if __name__ == '__main__':
+    if len(sys.argv) > 1 and sys.argv[1] == '-c':
+        compile_exe()
+
     root = Tk()
     MainApplication(root)
     root.mainloop()
+    sys.exit(0)
