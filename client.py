@@ -62,6 +62,8 @@ class WBEMClient(object):
         self.debug = debug
         self.https = https
         self.max_attempts = 5
+        self.last_request = None
+        self.last_response = None
 
     def Class(self, name, namespace=None):
         """
@@ -86,6 +88,7 @@ class WBEMClient(object):
             return Instance(classname_or_instance_string, keybindings, namespace or self.default_namespace)
 
     def request(self, xml, headers=None):
+        self.last_request = xml
         if self.debug:
             print(xml)
 
@@ -149,6 +152,7 @@ class WBEMClient(object):
         if self.debug:
             print(body)
 
+        self.last_response = body
         return body
 
     def imethodcall(self, method, class_or_instance_obj, xml):
