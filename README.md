@@ -12,7 +12,6 @@ Fully working read-only functions GetClass, EnumerateClasses, EnumerateClassName
 
 Limitations
 -----------
-* No HTTPS/SSL/TLS support yet
 * Only HTTP support, no local socket support yet
 * Only read-only methods are being developed currently
 
@@ -71,6 +70,18 @@ This is a quick example for listing the instances of a class:
 >>> client.EnumerateInstanceNames(client.Class('OperatingSystem'))
 <wbem.cim.Response: EnumerateInstanceNames, instances: 5, properties: 3>
 ```
+
+Frontends
+-------------
+To make testing easier, two GUI frontends and a CLI have been created. Both of the GUIs have nearly identical usage, one uses Tkinter, and the other PySide/Qt. This seemed like a great opportunity to compare GUI frameworks and how well they compile. There also appears to be a lack of free/open-source GUI tools for testing WBEM/CIM providers, which was a secondary motivation for creating the GUIs. The CLI works identically to the GUI frontends, except that information is passed using command-line arguments.
+
+Compiling Binaries
+------------------
+In the binaries folder, a single executable exists for Windows machines. This was compiled using the PySide/Qt frontend under Python 2.7 with py2exe, as py2exe seems to have several problems under Python 3.4.
+
+For building your own binaries on Windows, you'll need Python 2.7 (x86), py2exe==0.6.9, and PySide==1.1.2 or higher. In addition, you will need to copy msvcp90.dll from C:\Windows\winsxs\x86_microsoft.vc90.crt_1fc8b3b9a1e18e3b_9.0.21022.8_none_bcb86ed6ac711f91 to C:\Python27\DLLs. If you don't have the exact version number, check the py2exe documentation for getting the Microsoft Visual C 2008 redistributable. Once all of these requirements are satisfied and you are ready to compile, simply run: python gui_qt.py -c
+
+Any changes that need to be made to the Qt GUI can be done with the Qt Designer binary that is installed in the PySide folder in your Python installation's site-packages folder. Any changes made to the py_gui_mainwindow.ui file will require that py_gui_mainwindow.py be regenerated. This can be done by running: pyside-uic gui_qt_mainwindow.ui -o gui_qt_mainwindow.py
 
 Contributions
 -------------
