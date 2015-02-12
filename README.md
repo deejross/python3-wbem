@@ -30,6 +30,7 @@ WBEMClient is the primary way to interact with the library. This is its initiali
 * password: optional (default: None)
 * default_namespace: optional (default: root/cimv2)
 * debug: optional (default: False)
+* https: optional (default: False)
 
 To create Class or Instance objects you can use the client's Class and Instance methods.
 
