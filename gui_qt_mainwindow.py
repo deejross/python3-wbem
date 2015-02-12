@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'gui_qt.ui'
+# Form implementation generated from reading ui file 'gui_qt_mainwindow.ui'
 #
-# Created: Wed Feb 11 12:32:38 2015
+# Created: Thu Feb 12 11:08:57 2015
 #      by: pyside-uic 0.2.15 running on PySide 1.2.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -148,7 +148,7 @@ class Ui_MainWindow(object):
         self.btn_execute.setText(QtGui.QApplication.translate("MainWindow", "            Execute            ", None, QtGui.QApplication.UnicodeUTF8))
         self.tree_results.headerItem().setText(0, QtGui.QApplication.translate("MainWindow", "Name", None, QtGui.QApplication.UnicodeUTF8))
         self.tree_results.headerItem().setText(1, QtGui.QApplication.translate("MainWindow", "Value", None, QtGui.QApplication.UnicodeUTF8))
-        self.label_6.setText(QtGui.QApplication.translate("MainWindow", "Results", None, QtGui.QApplication.UnicodeUTF8))
+        self.label_6.setText(QtGui.QApplication.translate("MainWindow", "Results (double-click an instance name to copy it to the clipboard)", None, QtGui.QApplication.UnicodeUTF8))
         self.btn_collapse.setText(QtGui.QApplication.translate("MainWindow", "Collapse All", None, QtGui.QApplication.UnicodeUTF8))
         self.btn_expand.setText(QtGui.QApplication.translate("MainWindow", "Expand All", None, QtGui.QApplication.UnicodeUTF8))
 

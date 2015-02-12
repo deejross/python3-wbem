@@ -194,7 +194,7 @@
           <item>
            <widget class="QLabel" name="label_6">
             <property name="text">
-             <string>Results</string>
+             <string>Results (double-click an instance name to copy it to the clipboard)</string>
             </property>
            </widget>
           </item>

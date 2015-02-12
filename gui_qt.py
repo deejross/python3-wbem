@@ -32,6 +32,7 @@ import os
 import sys
 
 from gui_qt_mainwindow import Ui_MainWindow
+from PySide.QtCore import Slot
 from PySide.QtGui import QApplication, QMainWindow, QMessageBox, QTreeWidgetItem
 from wbem.cim import InvalidClass
 from wbem.client import WBEMClient
@@ -57,6 +58,7 @@ def parse_uri(uri):
 
     try:
         host, port = hostinfo.split(':', 1)
+        port = int(port)
     except ValueError:
         host = hostinfo
         port = 80
@@ -84,7 +86,7 @@ def compile_exe():
         options=dict(
             py2exe=dict(
                 includes=['PySide.QtCore', 'PySide.QtGui', 'PySide.QtNetwork'],
-                excludes=['tkinter', 'Tkinter', '_tkinter', 'Tkconstants', 'tcl', 'doctest', 'pdb', 'inspect', 'email'],
+                excludes=['tkinter', 'Tkinter', '_tkinter', 'Tkconstants', 'tcl', 'doctest', 'email'],
                 dll_excludes=dll_excludes,
                 bundle_files=1,
                 compressed=True
@@ -105,6 +107,7 @@ class MainWindow(QMainWindow):
 
         # setup event handlers
         self.ui.btn_execute.clicked.connect(self.btn_execute_clicked)
+        self.ui.tree_results.itemDoubleClicked.connect(self.tree_results_itemDoubleClicked)
 
     def btn_execute_clicked(self):
         try:
@@ -148,6 +151,12 @@ class MainWindow(QMainWindow):
 
         self.ui.tree_results.addTopLevelItems(nodes)
         self.ui.tree_results.resizeColumnToContents(0)
+
+    @Slot(QTreeWidgetItem, int)
+    def tree_results_itemDoubleClicked(self, item, column):
+        text = item.text(0)
+        if text.startswith('$cn'):
+            QApplication.clipboard().setText(text)
 
 
 if __name__ == '__main__':
